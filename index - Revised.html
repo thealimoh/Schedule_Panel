@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Biweekly Meetings & Weekly Roles</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      line-height: 1.6;
+      margin: 30px auto;
+      max-width: 900px;
+      background: #f9fafb;
+      color: #333;
+      padding: 0 15px 50px;
+    }
+    h2 {
+      margin-top: 50px;
+      margin-bottom: 20px;
+      font-weight: 700;
+      color: #2c3e50;
+      border-bottom: 3px solid #2980b9;
+      padding-bottom: 6px;
+    }
+    label { font-weight: 600; margin-right: 10px; color: #34495e; }
+    input, select {
+      padding: 8px 12px;
+      border: 1.5px solid #ccc;
+      border-radius: 6px;
+      font-size: 16px;
+      transition: border-color 0.3s ease;
+      min-width: 150px;
+    }
+    input:focus, select:focus {
+      outline: none;
+      border-color: #2980b9;
+      box-shadow: 0 0 8px rgba(41,128,185,0.3);
+    }
+    button {
+      background-color: #2980b9;
+      border: none;
+      color: white;
+      font-weight: 600;
+      cursor: pointer;
+      border-radius: 6px;
+      padding: 10px 18px;
+      font-size: 15px;
+      transition: background-color 0.3s ease;
+      margin-top: 10px;
+    }
+    button:hover { background-color: #1c5980; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      background: white;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    thead tr {
+      background-color: #2980b9;
+      color: white;
+      text-align: left;
+      font-weight: 700;
+      font-size: 15px;
+    }
+    th, td { padding: 12px 15px; border-bottom: 1px solid #e1e8ed; }
+    tbody tr:hover { background-color: #f1f8ff; }
+    #memberControls {
+      margin-top: 25px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+    #memberControls input,
+    #memberControls select { flex: 1 1 200px; max-width: 300px; }
+    @media (max-width: 600px) {
+      body { margin: 15px; padding-bottom: 30px; }
+      #memberControls { flex-direction: column; align-items: stretch; }
+      #memberControls input,
+      #memberControls select,
+      button { max-width: 100%; width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Schedules Control Panel</h2>
+  <label for="startDate">Select date:</label>
+  <input type="date" id="startDate" />
+  <label for="weeksCount">Number of weeks:</label>
+  <input type="number" id="weeksCount" min="1" max="12" value="2" />
+
+  <h2>Upcoming Biweekly Meeting Schedule (Tuesdays)</h2>
+  <table id="scheduleTable">
+    <thead>
+      <tr><th>Date</th><th>Time</th><th>Person</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <h2>Upcoming Weekly Group Meeting Schedule (Wednesdays)</h2>
+  <table id="rolesTable">
+    <thead>
+      <tr><th>Date (Wednesday)</th><th>Presenter 1</th><th>Presenter 2</th><th>Reporter</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <h2>Group Members</h2>
+  <table id="membersTable">
+    <thead><tr><th>Name</th></tr></thead>
+    <tbody></tbody>
+  </table>
+
+  <div id="memberControls">
+    <input type="text" id="newMemberName" placeholder="New member name" />
+    <button id="addMemberBtn">Add Member</button>
+    <select id="removeMemberSelect" aria-label="Select member to remove"></select>
+    <button id="removeMemberBtn">Remove Member</button>
+  </div>
+
+<script>
+  const aliStart = new Date("2025-07-22");
+  const rolesStart = new Date("2025-07-23");
+  let peopleList = [
+    "Ali T.", "Amir Y.", "Bryant", "Yijun", "Amirhossein",
+    "Nikta", "Hasti", "Ali A.", "Ali M."
+  ];
+
+  const dateInput = document.getElementById("startDate");
+  const weeksInput = document.getElementById("weeksCount");
+  const scheduleTableBody = document.querySelector("#scheduleTable tbody");
+  const rolesTableBody = document.querySelector("#rolesTable tbody");
+  const membersTableBody = document.querySelector("#membersTable tbody");
+  const newMemberNameInput = document.getElementById("newMemberName");
+  const addMemberBtn = document.getElementById("addMemberBtn");
+  const removeMemberSelect = document.getElementById("removeMemberSelect");
+  const removeMemberBtn = document.getElementById("removeMemberBtn");
+
+  function resetTime(d) {
+    d.setHours(0,0,0,0);
+    return d;
+  }
+
+  function getEffectiveTuesday(from) {
+    const d = resetTime(new Date(from));
+    const day = d.getDay();
+    d.setDate(d.getDate() + (day < 2 ? 2 - day : 9 - day));
+    return d;
+  }
+
+  function getEffectiveWednesday(from) {
+    const d = resetTime(new Date(from));
+    const day = d.getDay();
+    d.setDate(d.getDate() + (day < 3 ? 3 - day : 10 - day));
+    return d;
+  }
+
+  function formatDatePretty(d) {
+    return d.toLocaleDateString("en-US", {
+      weekday: "short", year: "numeric",
+      month: "short", day: "numeric"
+    });
+  }
+
+  function isAliMeetingDay(date) {
+    if (date < aliStart) return false;
+    const weeks = Math.floor((date - aliStart)/(1000*60*60*24*7));
+    return weeks % 2 === 0;
+  }
+
+  function isNiktaMeetingDay(date) {
+    if (date < aliStart) return false;
+    const weeks = Math.floor((date - aliStart)/(1000*60*60*24*7));
+    return weeks % 2 === 1;
+  }
+
+  function generateBiweeklyMeetings(fromDate, weeksCount) {
+    scheduleTableBody.innerHTML = "";
+    const aliSlots = [
+      { time: "09:00 - 09:30", name: "Ali M." },
+      { time: "09:45 - 10:15", name: "Ali A." },
+      { time: "10:30 - 11:00", name: "Ali T." }
+    ];
+    const niktaSlots = [
+      { time: "09:00 - 09:30", name: "Nikta" },
+      { time: "09:45 - 10:15", name: "Amir Y." },
+      { time: "10:30 - 11:00", name: "Yijun" },
+      { time: "11:15 - 11:45", name: "Bryant" }
+    ];
+    let d = getEffectiveTuesday(fromDate), count = 0;
+    while (count < weeksCount) {
+      const dateStr = formatDatePretty(d);
+      let meetings = isAliMeetingDay(d) ? aliSlots
+                   : isNiktaMeetingDay(d) ? niktaSlots
+                   : [];
+      meetings.forEach((slot,i) => {
+        const row = document.createElement("tr");
+        if (i===0) {
+          const dateCell = document.createElement("td");
+          dateCell.textContent = dateStr;
+          dateCell.rowSpan = meetings.length;
+          row.appendChild(dateCell);
+        }
+        row.appendChild(Object.assign(document.createElement("td"),{textContent:slot.time}));
+        row.appendChild(Object.assign(document.createElement("td"),{textContent:slot.name}));
+        scheduleTableBody.appendChild(row);
+      });
+      count++;
+      d.setDate(d.getDate()+7);
+    }
+  }
+
+  function generateWeeklyRoles(fromDate, weeksCount) {
+    rolesTableBody.innerHTML = "";
+    const base = getEffectiveWednesday(fromDate);
+    let lastReporter = null;
+    for (let i = 0; i < weeksCount; i++) {
+      const d = new Date(base);
+      d.setDate(base.getDate() + i*7);
+      const dateStr = formatDatePretty(d);
+      const weekOffset = Math.floor((d - rolesStart)/(1000*60*60*24*7));
+      const rotationIndex = (2 * weekOffset) % peopleList.length;
+      const p1 = peopleList[ rotationIndex ];
+      const p2 = peopleList[(rotationIndex+1) % peopleList.length];
+      const nextWeekOffset = weekOffset + 1;
+      const nextRot = (2 * nextWeekOffset) % peopleList.length;
+      const nextP1 = peopleList[ nextRot ];
+      const nextP2 = peopleList[(nextRot+1) % peopleList.length];
+      let reporter = nextP1 === lastReporter ? nextP2 : nextP1;
+      lastReporter = reporter;
+
+      const row = document.createElement("tr");
+      [dateStr, p1, p2, reporter].forEach(txt => {
+        const cell = document.createElement("td");
+        cell.textContent = txt;
+        row.appendChild(cell);
+      });
+      rolesTableBody.appendChild(row);
+    }
+  }
+
+  function generateMembersTable() {
+    membersTableBody.innerHTML = "";
+    removeMemberSelect.innerHTML = "";
+    peopleList.forEach(name => {
+      const tr = document.createElement("tr");
+      const td = document.createElement("td");
+      td.textContent = name;
+      tr.appendChild(td);
+      membersTableBody.appendChild(tr);
+      const option = document.createElement("option");
+      option.value = name;
+      option.textContent = name;
+      removeMemberSelect.appendChild(option);
+    });
+  }
+
+  function refreshTables() {
+    const fromDate = new Date(dateInput.value);
+    if (isNaN(fromDate)) { alert("Please select a valid start date."); return; }
+    const weeks = parseInt(weeksInput.value) || 2;
+    generateBiweeklyMeetings(fromDate, weeks);
+    generateWeeklyRoles(fromDate, weeks);
+  }
+
+  addMemberBtn.addEventListener("click", () => {
+    const name = newMemberNameInput.value.trim();
+    if (!name) { alert("Please enter a name to add."); return; }
+    if (peopleList.includes(name)) { alert("This member already exists."); return; }
+    peopleList.push(name);
+    newMemberNameInput.value = "";
+    generateMembersTable();
+    refreshTables();
+  });
+
+  removeMemberBtn.addEventListener("click", () => {
+    const nameToRemove = removeMemberSelect.value;
+    if (!nameToRemove) { alert("Please select a member to remove."); return; }
+    peopleList = peopleList.filter(n => n !== nameToRemove);
+    generateMembersTable();
+    refreshTables();
+  });
+
+  const today = new Date();
+  dateInput.value = today.toISOString().split("T")[0];
+  weeksInput.value = 2;
+  generateMembersTable();
+  refreshTables();
+  dateInput.addEventListener("change", refreshTables);
+  weeksInput.addEventListener("change", refreshTables);
+</script>
+
+</body>
+</html>
