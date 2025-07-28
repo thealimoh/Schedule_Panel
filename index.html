@@ -69,7 +69,7 @@
 
   <h2>Upcoming Weekly Group Meeting Schedule (Wednesdays)</h2>
   <table id="rolesTable">
-    <thead><tr><th>Date</th><th>Presenter 1</th><th>Presenter 2</th><th>Reporter</th><th>Actions</th></tr></thead>
+    <thead><tr><th>Date</th><th>Presenter 1</th><th>Presenter 2</th><th>Reporter</th><th>Actions</th></tr></thead>
     <tbody></tbody>
   </table>
 
@@ -319,20 +319,4 @@
   removeMemberBtn.addEventListener("click", () => {
     const name = removeMemberSelect.value;
     if (!name) { alert("Select a member."); return; }
-    peopleList = peopleList.filter(n => n !== name);
-    generateMembersTable();
-    refreshTables();
-  });
-
-  (()=>{
-n    const today = new Date();
-    dateInput.value = today.toISOString().slice(0,10);
-    weeksInput.value = 2;
-    generateMembersTable();
-    refreshTables();
-    dateInput.addEventListener("change", refreshTables);
-    weeksInput.addEventListener("change", refreshTables);
-  })();
-</script>
-</body>
-</html>
+    people
